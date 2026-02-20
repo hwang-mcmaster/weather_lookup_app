@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>API Search App</title>
+  <style>
+    body { font-family: system-ui, Arial, sans-serif; margin: 24px; }
+    .wrap { max-width: 920px; margin: 0 auto; }
+    h1 { font-size: 22px; margin: 0 0 14px; }
+    .card { border: 1px solid #dbd9d9; border-radius: 10px; padding: 16px; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; }
+    label { font-size: 13px; display: block; margin-bottom: 6px; }
+    input, select { width: 100%; padding: 10px; border: 1px solid #cccccc; border-radius: 8px; }
+    .row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+    .radio { display: flex; gap: 10px; align-items: center; }
+    button { padding: 10px 14px; border: 0; border-radius: 8px; cursor: pointer; }
+    button.primary { background: #0f0f0f; color: #ffffff; }
+    button:disabled { opacity: 0.6; cursor: not-allowed; }
+    .meta { margin-top: 12px; font-size: 13px; color: #494949; }
+    .error { color: #b80828; margin-top: 10px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 14px; }
+    th, td { text-align: left; padding: 10px; border-bottom: 1px solid #eee; }
+    th { font-size: 13px; color: #333; }
+    .muted { color: #696868; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>API Search</h1>
+
+    <div class="card">
+      <form id="searchForm">
+        <div class="grid">
+          <div>
+            <label for="keyword">Keyword</label>
+            <input id="keyword" name="keyword" type="text" placeholder="e.g. coffee" required />
+          </div>
+
+          <div>
+            <label for="category">Category</label>
+            <select id="category" name="category" required>
+              <option value="all">All</option>
+              <option value="books">Books</option>
+              <option value="movies">Movies</option>
+              <option value="games">Games</option>
+            </select>
+          </div>
+
+          <div>
+            <label for="limit">Max results</label>
+            <select id="limit" name="limit" required>
+              <option value="5">5</option>
+              <option value="10" selected>10</option>
+              <option value="20">20</option>
+            </select>
+          </div>
+
+          <div>
+            <label>Sort</label>
+            <div class="radio">
+              <label><input type="radio" name="sort" value="relevance" checked /> Relevance</label>
+              <label><input type="radio" name="sort" value="recent" /> Recent</label>
+            </div>
+          </div>
+        </div>
+
+        <div class="row" style="margin-top: 14px;">
+          <button class="primary" id="submitBtn" type="submit">Search</button>
+          <span class="muted" id="statusText"></span>
+        </div>
+      </form>
+
+      <div class="error" id="errorBox" hidden></div>
+
+      <div class="meta" id="resultMeta" hidden></div>
+
+      <table id="resultsTable" hidden>
+        <thead>
+          <tr>
+            <th>Title</th>
+            <th>Type</th>
+            <th>Score</th>
+          </tr>
+        </thead>
+        <tbody id="resultsBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    const form = document.getElementById("searchForm");
+    const submitBtn = document.getElementById("submitBtn");
+    const statusText = document.getElementById("statusText");
+    const errorBox = document.getElementById("errorBox");
+    const resultMeta = document.getElementById("resultMeta");
+    const resultsTable = document.getElementById("resultsTable");
+    const resultsBody = document.getElementById("resultsBody");
+
+    function setLoading(isLoading) {
+      submitBtn.disabled = isLoading;
+      statusText.textContent = isLoading ? "Loading..." : "";
+    }
+
+    function showError(msg) {
+      errorBox.textContent = msg;
+      errorBox.hidden = !msg;
+    }
+
+    function renderResults(items) {
+      resultsBody.innerHTML = "";
+      if (!items || items.length === 0) {
+        resultsTable.hidden = true;
+        resultMeta.hidden = false;
+        resultMeta.textContent = "No results found.";
+        return;
+      }
+
+      for (const it of items) {
+        const tr = document.createElement("tr");
+
+        const tdTitle = document.createElement("td");
+        tdTitle.textContent = it.title ?? "(no title)";
+
+        const tdType = document.createElement("td");
+        tdType.textContent = it.type ?? "-";
+
+        const tdScore = document.createElement("td");
+        tdScore.textContent = (it.score ?? "").toString();
+
+        tr.appendChild(tdTitle);
+        tr.appendChild(tdType);
+        tr.appendChild(tdScore);
+        resultsBody.appendChild(tr);
+      }
+
+      resultMeta.hidden = false;
+      resultMeta.textContent = `Showing ${items.length} result(s).`;
+      resultsTable.hidden = false;
+    }
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      showError("");
+      setLoading(true);
+
+      const keyword = document.getElementById("keyword").value.trim();
+      const category = document.getElementById("category").value;
+      const limit = Number(document.getElementById("limit").value);
+      const sort = new FormData(form).get("sort");
+
+      const payload = { keyword, category, limit, sort };
+
+      try {
+        const resp = await fetch("/api/search", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+
+        if (!resp.ok) {
+          const text = await resp.text();
+          throw new Error(text || `Request failed with status ${resp.status}`);
+        }
+
+        const data = await resp.json();
+        renderResults(data.results);
+      } catch (err) {
+        renderResults([]);
+        showError(err.message || "Something went wrong.");
+      } finally {
+        setLoading(false);
+      }
+    });
+  </script>
+</body>
+</html>
