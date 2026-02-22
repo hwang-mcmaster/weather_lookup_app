@@ -38,14 +38,6 @@
     </label>
 
     <label>
-      Wind unit
-      <select id="windUnit">
-        <option value="kmh" selected>kmh</option>
-        <option value="mph">mph</option>
-      </select>
-    </label>
-
-    <label>
       <input id="precip" type="checkbox" checked />
       Include precipitation
     </label>
@@ -55,6 +47,16 @@
       Include wind max
     </label>
 
+    <div id="windUnitWrap">
+      <label>
+        Wind unit
+        <select id="windUnit">
+          <option value="kmh" selected>kmh</option>
+          <option value="mph">mph</option>
+        </select>
+      </label>
+    </div>
+
     <button type="submit">Get weather</button>
   </form>
 
@@ -62,13 +64,7 @@
 
   <table id="t" hidden>
     <thead>
-      <tr>
-        <th>Date</th>
-        <th>Max temp</th>
-        <th>Min temp</th>
-        <th>Precip</th>
-        <th>Wind max</th>
-      </tr>
+      <tr id="hdr"></tr>
     </thead>
     <tbody id="tb"></tbody>
   </table>
@@ -78,9 +74,44 @@
     const status = document.getElementById("status");
     const table = document.getElementById("t");
     const tbody = document.getElementById("tb");
+    const hdr = document.getElementById("hdr");
+
+    const windCb = document.getElementById("wind");
+    const windUnitWrap = document.getElementById("windUnitWrap");
+
+    function setWindUnitVisibility() {
+      windUnitWrap.hidden = !windCb.checked;
+    }
+
+    setWindUnitVisibility();
+    windCb.addEventListener("change", () => {
+      setWindUnitVisibility();
+      table.hidden = true;
+    });
+
+    function buildHeader(showPrecip, showWind) {
+      hdr.innerHTML = "";
+
+      const cols = [
+        "Date",
+        "Max temp",
+        "Min temp"
+      ];
+
+      if (showPrecip) cols.push("Precip");
+      if (showWind) cols.push("Wind max");
+
+      for (const c of cols) {
+        const th = document.createElement("th");
+        th.textContent = c;
+        hdr.appendChild(th);
+      }
+    }
 
     function showRows(daily, showPrecip, showWind) {
       tbody.innerHTML = "";
+      buildHeader(showPrecip, showWind);
+
       const n = daily.time.length;
 
       for (let i = 0; i < n; i++) {
@@ -88,24 +119,28 @@
 
         const tdDate = document.createElement("td");
         tdDate.textContent = daily.time[i];
+        tr.appendChild(tdDate);
 
         const tdMax = document.createElement("td");
         tdMax.textContent = daily.tmax[i];
+        tr.appendChild(tdMax);
 
         const tdMin = document.createElement("td");
         tdMin.textContent = daily.tmin[i];
-
-        const tdPre = document.createElement("td");
-        tdPre.textContent = showPrecip ? daily.precip[i] : "";
-
-        const tdWind = document.createElement("td");
-        tdWind.textContent = showWind ? daily.windMax[i] : "";
-
-        tr.appendChild(tdDate);
-        tr.appendChild(tdMax);
         tr.appendChild(tdMin);
-        tr.appendChild(tdPre);
-        tr.appendChild(tdWind);
+
+        if (showPrecip) {
+          const tdPre = document.createElement("td");
+          tdPre.textContent = daily.precip[i];
+          tr.appendChild(tdPre);
+        }
+
+        if (showWind) {
+          const tdWind = document.createElement("td");
+          tdWind.textContent = daily.windMax[i];
+          tr.appendChild(tdWind);
+        }
+
         tbody.appendChild(tr);
       }
 
@@ -117,13 +152,15 @@
       status.textContent = "Loading...";
       table.hidden = true;
 
+      const includeWind = document.getElementById("wind").checked;
+
       const payload = {
         city: document.getElementById("city").value.trim(),
         units: document.getElementById("units").value,
         days: Number(document.getElementById("days").value),
-        windUnit: document.getElementById("windUnit").value,
+        windUnit: includeWind ? document.getElementById("windUnit").value : "kmh",
         includePrecip: document.getElementById("precip").checked,
-        includeWind: document.getElementById("wind").checked
+        includeWind
       };
 
       try {
@@ -138,9 +175,11 @@
 
         const offsetHours = data.timezone.offset / 3600;
 
+        const windInfo = data.includeWind ? ` | Wind: ${data.units.wind}` : "";
+
         status.textContent =
           `Location: ${data.location.name}, ${data.location.country} | ` +
-          `Temp: ${data.units.temperature} | Wind: ${data.units.wind} | ` +
+          `Temp: ${data.units.temperature}${windInfo} | ` +
           `Timezone: ${data.timezone.name} (UTC ${offsetHours >= 0 ? "+" : ""}${offsetHours})`;
 
         showRows(data.daily, data.includePrecip, data.includeWind);
