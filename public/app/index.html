@@ -7,8 +7,8 @@
   <style>
     body { font-family: Arial, sans-serif; margin: 20px; }
     label { display: block; margin: 8px 0; }
-    table { border-collapse: collapse; margin-top: 12px; width: 100%; max-width: 700px; }
-    th, td { border: 1px solid #cccccc; padding: 6px 8px; text-align: left; }
+    table { border-collapse: collapse; margin-top: 12px; width: 100%; max-width: 820px; }
+    th, td { border: 1px solid #ccc; padding: 6px 8px; text-align: left; }
   </style>
 </head>
 <body>
@@ -21,7 +21,7 @@
     </label>
 
     <label>
-      Units
+      Temperature units
       <select id="units">
         <option value="c" selected>C</option>
         <option value="f">F</option>
@@ -38,17 +38,21 @@
     </label>
 
     <label>
-      Timezone
-      <select id="tz">
-        <option value="auto" selected>auto</option>
-        <option value="America/Toronto">America/Toronto</option>
-        <option value="UTC">UTC</option>
+      Wind unit
+      <select id="windUnit">
+        <option value="kmh" selected>kmh</option>
+        <option value="mph">mph</option>
       </select>
     </label>
 
     <label>
       <input id="precip" type="checkbox" checked />
       Include precipitation
+    </label>
+
+    <label>
+      <input id="wind" type="checkbox" checked />
+      Include wind max
     </label>
 
     <button type="submit">Get weather</button>
@@ -63,6 +67,7 @@
         <th>Max temp</th>
         <th>Min temp</th>
         <th>Precip</th>
+        <th>Wind max</th>
       </tr>
     </thead>
     <tbody id="tb"></tbody>
@@ -74,7 +79,7 @@
     const table = document.getElementById("t");
     const tbody = document.getElementById("tb");
 
-    function showRows(daily, showPrecip) {
+    function showRows(daily, showPrecip, showWind) {
       tbody.innerHTML = "";
       const n = daily.time.length;
 
@@ -93,10 +98,14 @@
         const tdPre = document.createElement("td");
         tdPre.textContent = showPrecip ? daily.precip[i] : "";
 
+        const tdWind = document.createElement("td");
+        tdWind.textContent = showWind ? daily.windMax[i] : "";
+
         tr.appendChild(tdDate);
         tr.appendChild(tdMax);
         tr.appendChild(tdMin);
         tr.appendChild(tdPre);
+        tr.appendChild(tdWind);
         tbody.appendChild(tr);
       }
 
@@ -112,8 +121,9 @@
         city: document.getElementById("city").value.trim(),
         units: document.getElementById("units").value,
         days: Number(document.getElementById("days").value),
-        timezone: document.getElementById("tz").value,
-        includePrecip: document.getElementById("precip").checked
+        windUnit: document.getElementById("windUnit").value,
+        includePrecip: document.getElementById("precip").checked,
+        includeWind: document.getElementById("wind").checked
       };
 
       try {
@@ -130,10 +140,10 @@
 
         status.textContent =
           `Location: ${data.location.name}, ${data.location.country} | ` +
-          `Units: ${data.units.temperature} | ` +
+          `Temp: ${data.units.temperature} | Wind: ${data.units.wind} | ` +
           `Timezone: ${data.timezone.name} (UTC ${offsetHours >= 0 ? "+" : ""}${offsetHours})`;
 
-        showRows(data.daily, data.includePrecip);
+        showRows(data.daily, data.includePrecip, data.includeWind);
       } catch (err) {
         status.textContent = err.message || String(err);
       }
