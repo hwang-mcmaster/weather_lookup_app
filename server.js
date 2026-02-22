@@ -18,37 +18,63 @@ app.post("/api/weather", async (req, res) => {
   try {
     const city = (req.body.city ?? "").toString().trim();
     const units = (req.body.units ?? "c").toString().trim().toLowerCase();
+    const timezone = (req.body.timezone ?? "auto").toString().trim();
+    const includePrecip = Boolean(req.body.includePrecip);
     const daysRaw = Number(req.body.days ?? 3);
-
     const days = Number.isFinite(daysRaw) ? Math.max(1, Math.min(7, daysRaw)) : 3;
 
     if (!city) return res.status(400).json({ error: "city is required" });
 
-    const geo = await axios.get("https://geocoding-api.open-meteo.com/v1/search", {
-      params: { name: city, count: 1, language: "en", format: "json" }
+    const geoResp = await axios.get("https://geocoding-api.open-meteo.com/v1/search", {
+      params: {
+        name: city,
+        count: 1,
+        language: "en",
+        format: "json"
+      }
     });
 
-    const first = geo.data?.results?.[0];
+    const first = geoResp.data?.results?.[0];
     if (!first) return res.status(404).json({ error: "city not found" });
 
     const latitude = first.latitude;
     const longitude = first.longitude;
 
-    const tempUnit = units === "f" ? "fahrenheit" : "celsius";
+    const temperature_unit = units === "f" ? "fahrenheit" : "celsius";
 
-    const forecast = await axios.get("https://api.open-meteo.com/v1/forecast", {
+    const dailyBase = ["temperature_2m_max", "temperature_2m_min"];
+    if (includePrecip) dailyBase.push("precipitation_sum");
+    const daily = dailyBase.join(",");
+
+    const forecastResp = await axios.get("https://api.open-meteo.com/v1/forecast", {
       params: {
         latitude,
         longitude,
-        daily: "temperature_2m_max,temperature_2m_min,precipitation_sum",
-        temperature_unit: tempUnit,
-        timezone: "auto",
+        daily,
+        temperature_unit,
+        timezone,
         forecast_days: days
       }
     });
 
-    const d = forecast.data?.daily;
+    const d = forecastResp.data?.daily ?? {};
 
+    res.json({
+      location: {
+        name: first.name,
+        country: first.country,
+        latitude,
+        longitude
+      },
+      units: { temperature: units === "f" ? "F" : "C" },
+      includePrecip,
+      daily: {
+        time: d.time ?? [],
+        tmax: d.temperature_2m_max ?? [],
+        tmin: d.temperature_2m_min ?? [],
+        precip: d.precipitation_sum ?? Array((d.time ?? []).length).fill("")
+      }
+    });
   } catch (e) {
     res.status(500).json({ error: "server error" });
   }

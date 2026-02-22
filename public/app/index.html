@@ -4,6 +4,12 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Weather Lookup</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    label { display: block; margin: 8px 0; }
+    table { border-collapse: collapse; margin-top: 12px; width: 100%; max-width: 700px; }
+    th, td { border: 1px solid #ccc; padding: 6px 8px; text-align: left; }
+  </style>
 </head>
 <body>
   <h1>Weather Lookup</h1>
@@ -17,7 +23,7 @@
     <label>
       Units
       <select id="units">
-        <option value="c">C</option>
+        <option value="c" selected>C</option>
         <option value="f">F</option>
       </select>
     </label>
@@ -31,23 +37,83 @@
       </select>
     </label>
 
+    <label>
+      Timezone
+      <select id="tz">
+        <option value="auto" selected>auto</option>
+        <option value="America/Toronto">America/Toronto</option>
+        <option value="UTC">UTC</option>
+      </select>
+    </label>
+
+    <label>
+      <input id="precip" type="checkbox" checked />
+      Include precipitation
+    </label>
+
     <button type="submit">Get weather</button>
   </form>
 
-  <pre id="out"></pre>
+  <p id="status"></p>
+
+  <table id="t" hidden>
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>Max Temperature</th>
+        <th>Min Temperature</th>
+        <th>Precipitation</th>
+      </tr>
+    </thead>
+    <tbody id="tb"></tbody>
+  </table>
 
   <script>
     const f = document.getElementById("f");
-    const out = document.getElementById("out");
+    const status = document.getElementById("status");
+    const table = document.getElementById("t");
+    const tbody = document.getElementById("tb");
+
+    function showRows(daily, showPrecip) {
+      tbody.innerHTML = "";
+      const n = daily.time.length;
+
+      for (let i = 0; i < n; i++) {
+        const tr = document.createElement("tr");
+
+        const tdDate = document.createElement("td");
+        tdDate.textContent = daily.time[i];
+
+        const tdMax = document.createElement("td");
+        tdMax.textContent = daily.tmax[i];
+
+        const tdMin = document.createElement("td");
+        tdMin.textContent = daily.tmin[i];
+
+        const tdPre = document.createElement("td");
+        tdPre.textContent = showPrecip ? daily.precip[i] : "";
+
+        tr.appendChild(tdDate);
+        tr.appendChild(tdMax);
+        tr.appendChild(tdMin);
+        tr.appendChild(tdPre);
+        tbody.appendChild(tr);
+      }
+
+      table.hidden = false;
+    }
 
     f.addEventListener("submit", async (e) => {
       e.preventDefault();
-      out.textContent = "Loading...";
+      status.textContent = "Loading...";
+      table.hidden = true;
 
       const payload = {
         city: document.getElementById("city").value.trim(),
         units: document.getElementById("units").value,
-        days: Number(document.getElementById("days").value)
+        days: Number(document.getElementById("days").value),
+        timezone: document.getElementById("tz").value,
+        includePrecip: document.getElementById("precip").checked
       };
 
       try {
@@ -60,9 +126,10 @@
         const data = await r.json();
         if (!r.ok) throw new Error(data.error || "Request failed");
 
-        out.textContent = JSON.stringify(data, null, 2);
+        status.textContent = `Location: ${data.location.name}, ${data.location.country} | Units: ${data.units.temperature}`;
+        showRows(data.daily, data.includePrecip);
       } catch (err) {
-        out.textContent = String(err.message || err);
+        status.textContent = err.message || String(err);
       }
     });
   </script>
