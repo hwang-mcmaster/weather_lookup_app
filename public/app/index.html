@@ -8,7 +8,7 @@
     body { font-family: Arial, sans-serif; margin: 20px; }
     label { display: block; margin: 8px 0; }
     table { border-collapse: collapse; margin-top: 12px; width: 100%; max-width: 700px; }
-    th, td { border: 1px solid #ccc; padding: 6px 8px; text-align: left; }
+    th, td { border: 1px solid #cccccc; padding: 6px 8px; text-align: left; }
   </style>
 </head>
 <body>
@@ -60,9 +60,9 @@
     <thead>
       <tr>
         <th>Date</th>
-        <th>Max Temperature</th>
-        <th>Min Temperature</th>
-        <th>Precipitation</th>
+        <th>Max temp</th>
+        <th>Min temp</th>
+        <th>Precip</th>
       </tr>
     </thead>
     <tbody id="tb"></tbody>
@@ -126,7 +126,13 @@
         const data = await r.json();
         if (!r.ok) throw new Error(data.error || "Request failed");
 
-        status.textContent = `Location: ${data.location.name}, ${data.location.country} | Units: ${data.units.temperature}`;
+        const offsetHours = data.timezone.offset / 3600;
+
+        status.textContent =
+          `Location: ${data.location.name}, ${data.location.country} | ` +
+          `Units: ${data.units.temperature} | ` +
+          `Timezone: ${data.timezone.name} (UTC ${offsetHours >= 0 ? "+" : ""}${offsetHours})`;
+
         showRows(data.daily, data.includePrecip);
       } catch (err) {
         status.textContent = err.message || String(err);

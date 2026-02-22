@@ -20,6 +20,7 @@ app.post("/api/weather", async (req, res) => {
     const units = (req.body.units ?? "c").toString().trim().toLowerCase();
     const timezone = (req.body.timezone ?? "auto").toString().trim();
     const includePrecip = Boolean(req.body.includePrecip);
+
     const daysRaw = Number(req.body.days ?? 3);
     const days = Number.isFinite(daysRaw) ? Math.max(1, Math.min(7, daysRaw)) : 3;
 
@@ -65,6 +66,10 @@ app.post("/api/weather", async (req, res) => {
         country: first.country,
         latitude,
         longitude
+      },
+      timezone: {
+        name: forecastResp.data.timezone,
+        offset: forecastResp.data.utc_offset_seconds
       },
       units: { temperature: units === "f" ? "F" : "C" },
       includePrecip,
