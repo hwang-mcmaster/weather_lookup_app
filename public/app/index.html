@@ -4,6 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Weather Lookup</title>
+
   <style>
     body { font-family: Arial, sans-serif; margin: 20px; }
     label { display: block; margin: 8px 0; }
@@ -12,181 +13,163 @@
   </style>
 </head>
 <body>
-  <h1>Weather Lookup</h1>
 
-  <form id="f">
-    <label>
-      City
-      <input id="city" required placeholder="Toronto" />
-    </label>
+<h1>Weather Lookup</h1>
 
+<!-- user input form -->
+<form id="f">
+  <label>
+    City
+    <input id="city" required placeholder="Toronto" />
+  </label>
+
+  <label>
+    Temperature units
+    <select id="units">
+      <option value="c" selected>C</option>
+      <option value="f">F</option>
+    </select>
+  </label>
+
+  <label>
+    Days
+    <select id="days">
+      <option value="1">1</option>
+      <option value="3" selected>3</option>
+      <option value="7">7</option>
+    </select>
+  </label>
+
+  <label>
+    <input id="precip" type="checkbox" checked />
+    Include precipitation
+  </label>
+
+  <label>
+    <input id="wind" type="checkbox" checked />
+    Include wind max
+  </label>
+
+  <div id="windUnitWrap">
     <label>
-      Temperature units
-      <select id="units">
-        <option value="c" selected>C</option>
-        <option value="f">F</option>
+      Wind unit
+      <select id="windUnit">
+        <option value="kmh" selected>kmh</option>
+        <option value="mph">mph</option>
       </select>
     </label>
+  </div>
 
-    <label>
-      Days
-      <select id="days">
-        <option value="1">1</option>
-        <option value="3" selected>3</option>
-        <option value="7">7</option>
-      </select>
-    </label>
+  <button type="submit">Get weather</button>
+</form>
 
-    <label>
-      <input id="precip" type="checkbox" checked />
-      Include precipitation
-    </label>
+<p id="status"></p>
 
-    <label>
-      <input id="wind" type="checkbox" checked />
-      Include wind max
-    </label>
+<table id="t" hidden>
+  <thead>
+    <tr id="hdr"></tr>
+  </thead>
+  <tbody id="tb"></tbody>
+</table>
 
-    <div id="windUnitWrap">
-      <label>
-        Wind unit
-        <select id="windUnit">
-          <option value="kmh" selected>kmh</option>
-          <option value="mph">mph</option>
-        </select>
-      </label>
-    </div>
+<script>
+  const f = document.getElementById("f");
+  const status = document.getElementById("status");
+  const table = document.getElementById("t");
+  const tbody = document.getElementById("tb");
+  const hdr = document.getElementById("hdr");
 
-    <button type="submit">Get weather</button>
-  </form>
+  const windCb = document.getElementById("wind");
+  const windUnitWrap = document.getElementById("windUnitWrap");
 
-  <p id="status"></p>
-
-  <table id="t" hidden>
-    <thead>
-      <tr id="hdr"></tr>
-    </thead>
-    <tbody id="tb"></tbody>
-  </table>
-
-  <script>
-    const f = document.getElementById("f");
-    const status = document.getElementById("status");
-    const table = document.getElementById("t");
-    const tbody = document.getElementById("tb");
-    const hdr = document.getElementById("hdr");
-
-    const windCb = document.getElementById("wind");
-    const windUnitWrap = document.getElementById("windUnitWrap");
-
-    function setWindUnitVisibility() {
-      windUnitWrap.hidden = !windCb.checked;
-    }
-
+  // show or hide wind unit dropdown
+  function setWindUnitVisibility() {
+    windUnitWrap.hidden = !windCb.checked;
+  }
+  setWindUnitVisibility();
+  windCb.addEventListener("change", () => {
     setWindUnitVisibility();
-    windCb.addEventListener("change", () => {
-      setWindUnitVisibility();
-      table.hidden = true;
-    });
+    table.hidden = true;
+  });
 
-    function buildHeader(showPrecip, showWind) {
-      hdr.innerHTML = "";
+  // build table header dynamically based on selected options
+  function buildHeader(showPrecip, showWind) {
+    hdr.innerHTML = "";
+    const cols = ["Date", "Max temp", "Min temp"];
+    if (showPrecip) cols.push("Precip");
+    if (showWind) cols.push("Wind max");
 
-      const cols = [
-        "Date",
-        "Max temp",
-        "Min temp"
-      ];
-
-      if (showPrecip) cols.push("Precip");
-      if (showWind) cols.push("Wind max");
-
-      for (const c of cols) {
-        const th = document.createElement("th");
-        th.textContent = c;
-        hdr.appendChild(th);
-      }
+    for (const c of cols) {
+      const th = document.createElement("th");
+      th.textContent = c;
+      hdr.appendChild(th);
     }
+  }
 
-    function showRows(daily, showPrecip, showWind) {
-      tbody.innerHTML = "";
-      buildHeader(showPrecip, showWind);
+  // display rows from backend JSON response
+  function showRows(daily, showPrecip, showWind) {
+    tbody.innerHTML = "";
+    buildHeader(showPrecip, showWind);
 
-      const n = daily.time.length;
+    for (let i = 0; i < daily.time.length; i++) {
+      const tr = document.createElement("tr");
 
-      for (let i = 0; i < n; i++) {
-        const tr = document.createElement("tr");
+      const cells = [daily.time[i], daily.tmax[i], daily.tmin[i]];
+      if (showPrecip) cells.push(daily.precip[i]);
+      if (showWind) cells.push(daily.windMax[i]);
 
-        const tdDate = document.createElement("td");
-        tdDate.textContent = daily.time[i];
-        tr.appendChild(tdDate);
-
-        const tdMax = document.createElement("td");
-        tdMax.textContent = daily.tmax[i];
-        tr.appendChild(tdMax);
-
-        const tdMin = document.createElement("td");
-        tdMin.textContent = daily.tmin[i];
-        tr.appendChild(tdMin);
-
-        if (showPrecip) {
-          const tdPre = document.createElement("td");
-          tdPre.textContent = daily.precip[i];
-          tr.appendChild(tdPre);
-        }
-
-        if (showWind) {
-          const tdWind = document.createElement("td");
-          tdWind.textContent = daily.windMax[i];
-          tr.appendChild(tdWind);
-        }
-
-        tbody.appendChild(tr);
+      for (const c of cells) {
+        const td = document.createElement("td");
+        td.textContent = c;
+        tr.appendChild(td);
       }
-
-      table.hidden = false;
+      tbody.appendChild(tr);
     }
+    table.hidden = false;
+  }
 
-    f.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      status.textContent = "Loading...";
-      table.hidden = true;
+  // AJAX request to backend when form is submitted
+  f.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    status.textContent = "Loading...";
+    table.hidden = true;
 
-      const includeWind = document.getElementById("wind").checked;
+    const includeWind = document.getElementById("wind").checked;
 
-      const payload = {
-        city: document.getElementById("city").value.trim(),
-        units: document.getElementById("units").value,
-        days: Number(document.getElementById("days").value),
-        windUnit: includeWind ? document.getElementById("windUnit").value : "kmh",
-        includePrecip: document.getElementById("precip").checked,
-        includeWind
-      };
+    const payload = {
+      city: document.getElementById("city").value.trim(),
+      units: document.getElementById("units").value,
+      days: Number(document.getElementById("days").value),
+      windUnit: includeWind ? document.getElementById("windUnit").value : "kmh",
+      includePrecip: document.getElementById("precip").checked,
+      includeWind
+    };
 
-      try {
-        const r = await fetch("/api/weather", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload)
-        });
+    try {
+      const r = await fetch("/api/weather", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
 
-        const data = await r.json();
-        if (!r.ok) throw new Error(data.error || "Request failed");
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.error || "Request failed");
 
-        const offsetHours = data.timezone.offset / 3600;
+      const offsetHours = data.timezone.offset / 3600;
+      const windInfo = data.includeWind ? ` | Wind: ${data.units.wind}` : "";
 
-        const windInfo = data.includeWind ? ` | Wind: ${data.units.wind}` : "";
+      status.textContent =
+        `Location: ${data.location.name}, ${data.location.country} | ` +
+        `Temp: ${data.units.temperature}${windInfo} | ` +
+        `Timezone: ${data.timezone.name} (UTC ${offsetHours >= 0 ? "+" : ""}${offsetHours})`;
 
-        status.textContent =
-          `Location: ${data.location.name}, ${data.location.country} | ` +
-          `Temp: ${data.units.temperature}${windInfo} | ` +
-          `Timezone: ${data.timezone.name} (UTC ${offsetHours >= 0 ? "+" : ""}${offsetHours})`;
+      showRows(data.daily, data.includePrecip, data.includeWind);
 
-        showRows(data.daily, data.includePrecip, data.includeWind);
-      } catch (err) {
-        status.textContent = err.message || String(err);
-      }
-    });
-  </script>
+    } catch (err) {
+      status.textContent = err.message || String(err);
+    }
+  });
+</script>
+
 </body>
 </html>

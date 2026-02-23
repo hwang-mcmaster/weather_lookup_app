@@ -5,6 +5,7 @@ const axios = require("axios");
 const app = express();
 const PORT = 3000;
 
+// allow backend to read JSON body from AJAX requests
 app.use(express.json());
 
 const appDir = path.join(__dirname, "public", "app");
@@ -14,13 +15,13 @@ app.get("/app", (req, res) => {
   res.sendFile(path.join(appDir, "index.html"));
 });
 
+// main API route called by the front end
 app.post("/api/weather", async (req, res) => {
   try {
+    // read parameters sent from the front end
     const city = (req.body.city ?? "").toString().trim();
-
     const units = (req.body.units ?? "c").toString().trim().toLowerCase();
     const windUnit = (req.body.windUnit ?? "kmh").toString().trim().toLowerCase();
-
     const includePrecip = Boolean(req.body.includePrecip);
     const includeWind = Boolean(req.body.includeWind);
 
@@ -29,6 +30,7 @@ app.post("/api/weather", async (req, res) => {
 
     if (!city) return res.status(400).json({ error: "city is required" });
 
+    //convert city name to coordinates
     const geoResp = await axios.get("https://geocoding-api.open-meteo.com/v1/search", {
       params: { name: city, count: 1, language: "en", format: "json" }
     });
@@ -39,6 +41,7 @@ app.post("/api/weather", async (req, res) => {
     const latitude = first.latitude;
     const longitude = first.longitude;
 
+    // build weather API parameters from user input
     const temperature_unit = units === "f" ? "fahrenheit" : "celsius";
     const wind_speed_unit = windUnit === "mph" ? "mph" : "kmh";
 
@@ -46,6 +49,7 @@ app.post("/api/weather", async (req, res) => {
     if (includePrecip) dailyFields.push("precipitation_sum");
     if (includeWind) dailyFields.push("wind_speed_10m_max");
 
+    //fetch forecast data
     const forecastResp = await axios.get("https://api.open-meteo.com/v1/forecast", {
       params: {
         latitude,
@@ -61,6 +65,7 @@ app.post("/api/weather", async (req, res) => {
     const d = forecastResp.data?.daily ?? {};
     const n = (d.time ?? []).length;
 
+    // send processed data back to front end as JSON
     res.json({
       location: {
         name: first.name,
@@ -86,6 +91,7 @@ app.post("/api/weather", async (req, res) => {
         windMax: d.wind_speed_10m_max ?? Array(n).fill("")
       }
     });
+
   } catch (e) {
     res.status(500).json({ error: "server error" });
   }
